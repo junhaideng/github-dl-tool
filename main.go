@@ -32,7 +32,7 @@ var path string
 
 func init() {
 	flag.StringVar(&url, "url", "", "the url you want to grab")
-	flag.StringVar(&path, "d", "", "the directory you want to save files")
+	flag.StringVar(&path, "dl", "", "the directory you want to save files")
 }
 
 func main() {
