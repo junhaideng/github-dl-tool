@@ -1,6 +1,5 @@
 /*
 Author: Edgar
-Date: 2020/12/8
 Description: download files from github with specified url, no need to download while repository
 */
 package main
@@ -27,27 +26,27 @@ var urlPattern = regexp.MustCompile(`<a class="js-navigation-open.*?".*?title="(
 var repositoryPattern = regexp.MustCompile(`(/.*?/.*?/)blob/(.*$)`)
 
 // command line args
-var url string
+var respositoryURL string
 var path string
 
 func init() {
-	flag.StringVar(&url, "url", "", "the url you want to grab")
+	flag.StringVar(&respositoryURL, "url", "", "the url you want to grab")
 	flag.StringVar(&path, "dl", "", "the directory you want to save files")
 }
 
 func main() {
 	flag.Parse()
-	if url == "" {
+	if respositoryURL == "" {
 		fmt.Println("please specify the github url!")
 		return
 	}
 	if path == "" {
-		path = getRepositoryName(url)
+		path = getPath(respositoryURL)
 	}
 	var client http.Client
 	var wg sync.WaitGroup
 	start := time.Now()
-	dl(client, url, path, &wg)
+	dl(client, respositoryURL, path, &wg)
 	wg.Wait()
 	fmt.Printf("total time: %.2f s\n", float64(time.Since(start))/float64(time.Second))
 }
@@ -69,7 +68,7 @@ func dl(client http.Client, url, path string, wg *sync.WaitGroup) {
 	for _, link := range links {
 		// if is directory, we can do it recursively
 		if isDir(link[2]) {
-			dl(client, GITHUB+string(link[2]), filepath.Join(path, strings.SplitN(string(link[2]), "/", 6)[5]), wg)
+			dl(client, GITHUB+string(link[2]), filepath.Join(path, getPath(string(link[2]))), wg)
 		} else {
 			// download it if it is file
 			rep := repositoryPattern.FindSubmatch(link[2])
@@ -103,9 +102,9 @@ func downloadFile(client http.Client, fileURL, path, filename string, wg *sync.W
 	// 写入文件
 	for {
 		n, err := resp.Body.Read(buff[:])
-		file.Write(buff[:n])
 		if err != nil {
 			if err == io.EOF {
+				file.Write(buff[:n])
 				fmt.Println("Read finished")
 				break
 			}
@@ -114,6 +113,7 @@ func downloadFile(client http.Client, fileURL, path, filename string, wg *sync.W
 			os.Remove(filepath.Join(path, filename))
 			return
 		}
+		file.Write(buff[:n])
 	}
 	fmt.Println("finish download:", filename)
 }
@@ -146,18 +146,8 @@ func isExist(path string) bool {
 	return true
 }
 
-func getRepositoryName(url string) string {
-	var pattern *regexp.Regexp
-	var count = strings.Count(url, "/")
-
-	if count > 4 {
-		pattern = regexp.MustCompile(`https://github.com/.*?/(.*?)/`)
-	} else if count == 4 {
-		pattern = regexp.MustCompile(`https://github.com/.*?/(.*$)`)
-	} else {
-		fmt.Println("url is wrong")
-		os.Exit(-1)
-	}
-	name := pattern.FindStringSubmatch(url)
-	return name[1]
+func getPath(responsitoryUrl string) string {
+	tmp := strings.TrimRight(responsitoryUrl, "/")
+	i := strings.LastIndex(tmp, "/")
+	return tmp[i+1:]
 }
